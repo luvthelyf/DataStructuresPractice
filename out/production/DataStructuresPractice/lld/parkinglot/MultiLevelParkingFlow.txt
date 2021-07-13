@@ -1,0 +1,146 @@
+1. model:
+    - gates
+        - enum GateStatus
+        - enum GateType
+        - EntryGate
+        - ExitGate
+    - vehicle
+        - enum VehicleType
+        -IVehicle
+            -Bike
+            -Truck
+    - parking
+        - SlotSize
+        - ParkingStatus
+        - ParkingSlot
+        - Floor
+
+2. controller:
+    - ChargesController - each parking has a fixed list of Charges for each type of vehicle
+    - GateController - to control functioning of gate
+    - PaymentController - to control payments
+
+3. core:
+    - Parking - Singleton // the parking system
+    - ParkingDetails
+
+4. admin:
+    - Administrator - Singleton
+    - AdminAuthApi  - Singleton
+
+5. payment:
+    - PaymentProvider
+        => Online
+        => Offline/Cash
+    - PaymentStatus
+
+6. exceptions
+
+
+1. Model :
+    - gates
+        - enum GateStatus : OPEN, CLOSE
+        - enum GateType : ENTRY, EXIT, ENTRY_EXIT
+        - IGate : open(), close(), allowPassage() // call open, let the vehicle pass, call close)
+            - IEntry : allowEntry()
+            - IExit  : allowExit()
+                - DefaultGate(ENTRY_EXIT) -> IEntry, IExit // status - CLOSE
+
+    - vehicle
+        - enum VehicleType : BIKE, COMPACT, SEDAN, TRUCK
+        - IVehicle : getVehicleType(), toString()
+            - Bike(vehicleNumber)
+            - Sedan (vehicleNumber)
+            - HatchBack (vehicleNumber)
+
+    - parking
+        - enum SlotSize(List<VehicleType> vehicleTypeList) :
+            a. Constants:
+                - SMALL(asList(BIKE, COMPACT))
+                - MEDIUM(asList(BIKE, COMPACT, SEDAN))
+                - LARGE(asList(BIKE, COMPACT, SEDAN, TRUCK))
+            b. Variables:
+                - List<VehicleType> vehicleTypeList
+            c. Methods:
+                - isParkingPossible(vehicle) if(vehicleTypeList.contains(vehicle.getVehicleType()))
+
+        - enum ParkingStatus : EMPTY, OCCUPIED
+
+        - ParkingSlot:
+            a. slotId, SlotStatus, Vehicle, SlotSize
+            b. emptySlot() // status empty vehicle null
+               isEmpty() // check empty to park vehicle
+               parkVehicle(Vehicle) // status = OCCUPIED
+
+        - Floor :
+            a. Variables:
+                - floorNumber,
+                - List<ParkingSlot> slots
+            b. Methods:
+                - ParkingSlot getAvailableSlot(vehicle) // loop through all slots and find slot.slotsize.isParkingPossible(vehicle)
+                - emptyFloor() // init with empty status
+
+2. Core
+    - Parking/System : Singleton
+        a. Variables:
+            - id,name,address,list<Floors>,fareController,gateController,paymentController,map<Vehicle, ParkingDetails>
+        b. Methods:
+            - addFloor(Floor)
+            - emptyParkingLot()
+            - onVehicleEntry(Vehicle, Gate) -
+                   Synchronize on Gate
+                   if gate is EntryGate type then OK else exception
+                   for each floor:
+                        ParkingSlot slot = floor.getAvailableSlot(vehicle)
+                        if slot not null then slot.parkVehicle(Vehicle) and break
+                   if slot is still null then throw exception
+                   create ParkingDetails with entryTime(new Date()), vehicle and save in map.
+                   call gateController.onVehicleEntered(Gate)
+
+            - onVehicleExit(Vehicle, Gate)
+                   synchronize on Gate
+                   if gate is ExitType OK else exception
+                   retrieve ParkingDetails from map ( say detail)
+                   detail.setExitTime(newDate())
+                   detail.getParkingSlot().emptySlot()
+                   amount = fareController.getCharges(detail)
+                   status = PaymentStatus(PENDING) while (!SUCCESS)
+                       paymentController.initiatePayment(amount)
+                       status = paymentController.getPaymentStatus()
+
+                   gateController.onVehicleExit(exitGate)
+
+    - ParkingDetails
+
+3. Admin
+    - Administrator :
+        a. Variables:
+            -userName, password
+        b. Methods:
+            - registerParking(Parking parking)
+            - unregisterParking(Parking parking)
+
+    - AdminAuthApi :
+        a. Variables:
+            - map<Administrator, String> adminTokenMap
+        b. Methods:
+            - registerAdmin(Administrator admin)
+            - verifyAdmin(Administrator admin)
+
+
+4. Payments
+    - enum PaymentStatus : FAILED, PENDING, SUCCESS
+    - IPaymentOption : PaymentStatus payAmount(Double amount)
+        - OnlineOption
+        - CashOption /OfflineOption
+
+    - PaymentProvider:
+        getPaymentOption(int option) // for robustness ask user to provide type of payment
+
+5.
+
+6.
+
+
+
+
